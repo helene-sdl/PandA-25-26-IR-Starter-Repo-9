@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
-Part 8 starter CLI.
+Part 9 starter CLI.
 
-WHAT'S NEW IN PART 8
-Encapsulation 😊. Now we're moving behavior where it belongs.
-
-We are not adding any new functionality, we simply move functions or parts of functions into classes (making them methods).
+WHAT'S NEW IN PART 9
+Our very first new module! And... we are finally again adding new functionality.
 """
 
+# ToDo 1: You will need to move and change some imports
 from typing import List
 import json
 import os
@@ -57,8 +56,10 @@ def ansi_highlight(text: str, spans):
     i = 0
     for s, e in merged:
         out.append(text[i:s])
+        # ToDo 2: You will need to use the new setting and for it a different ANSI color code: "\033[1;92m"
         out.append("\033[43m\033[30m")  # yellow background, black text
         out.append(text[s:e])
+        # ToDo 2: This stays the same. It just means "continue with default colors"
         out.append("\033[0m")           # reset
         i = e
     out.append(text[i:])
@@ -126,6 +127,7 @@ def print_results(
         # ToDo 0: From here on move the printing code to SearchResult.print(...)
         #         You should then be able to call r.print(idx, highlight)
         title_line = (
+            # ToDo 2: You will need to pass the new setting, the highlight_mode to ansi_highlight and use it there
             ansi_highlight(r.title, r.title_spans)
             if highlight
             else r.title
@@ -133,6 +135,7 @@ def print_results(
         print(f"\n[{idx}/{total_docs}] {title_line}")
         for lm in r.line_matches:
             line_out = (
+                # ToDo 2: You will need to pass the new setting, the highlight_mode to ansi_highlight and use it there
                 ansi_highlight(lm.text, lm.spans)
                 if highlight
                 else lm.text
@@ -141,12 +144,12 @@ def print_results(
 
 
 # ---------- Paths & data loading ----------
-
+# ToDo 1: Move to file_utilities.py
 def module_relative_path(name: str) -> str:
     """Return absolute path for a file next to this module."""
     return os.path.join(os.path.dirname(__file__), name)
 
-
+# ToDo 1: Move to file_utilities.py
 def fetch_sonnets_from_api() -> List[Sonnet]:
     """
     Call the PoetryDB API (POETRYDB_URL), decode the JSON response and
@@ -176,7 +179,7 @@ def fetch_sonnets_from_api() -> List[Sonnet]:
 
     return sonnets
 
-
+# ToDo 1: Move to file_utilities.py
 def load_sonnets() -> List[Sonnet]:
     """
     Load Shakespeare's sonnets with caching.
@@ -219,9 +222,10 @@ def load_sonnets() -> List[Sonnet]:
 
     return [Sonnet(data) for data in sonnets]
 # ------------------------- Config handling ---------------------------------
-
+# ToDo 1: Move to file_utilities.py
 DEFAULT_CONFIG = Configuration()
 
+# ToDo 1: Move to file_utilities.py
 def load_config() -> Configuration:
     config_file_path = module_relative_path("config.json")
 
@@ -244,6 +248,7 @@ def load_config() -> Configuration:
 
     return cfg
 
+# ToDo 1: Move to file_utilities.py
 def save_config(cfg: Configuration) -> None:
     config_file_path = module_relative_path("config.json")
 
@@ -257,10 +262,12 @@ def save_config(cfg: Configuration) -> None:
 
 def main() -> None:
     print(BANNER)
+    # ToDo 1: Depending on how your imports look, you may need to adapt the call to load_config()
     config = load_config()
 
     # Load sonnets (from cache or API)
     start = time.perf_counter()
+    # ToDo 1: Depending on how your imports look, you may need to adapt the call to load_sonnets()
     sonnets = load_sonnets()
 
     elapsed = (time.perf_counter() - start) * 1000
@@ -293,6 +300,8 @@ def main() -> None:
                 if len(parts) == 2 and parts[1].lower() in ("on", "off"):
                     config.highlight = parts[1].lower() == "on"
                     print("Highlighting", "ON" if config.highlight else "OFF")
+                    # ToDo 1: Depending on how your imports look, you may need to adapt the call to save_config()
+                    # ToDo 3: You need to adapt the call to save_config
                     save_config(config)
                 else:
                     print("Usage: :highlight on|off")
@@ -303,10 +312,13 @@ def main() -> None:
                 if len(parts) == 2 and parts[1].upper() in ("AND", "OR"):
                     config.search_mode = parts[1].upper()
                     print("Search mode set to", config.search_mode)
+                    # ToDo 3: You need to adapt the call to save_config
                     save_config(config)
                 else:
                     print("Usage: :search-mode AND|OR")
                 continue
+
+            # ToDo 2: A new setting is added here. It's command string is ':hl-mode'.
 
             print("Unknown command. Type :help for commands.")
             continue
@@ -353,6 +365,7 @@ def main() -> None:
         # Initialize elapsed_ms to contain the number of milliseconds the query evaluation took
         elapsed_ms = (time.perf_counter() - start) * 1000
 
+        # ToDo 2: You will need to pass the new setting, the highlight_mode to print_results and use it there
         print_results(raw, combined_results, config.highlight, elapsed_ms)
 
 if __name__ == "__main__":
