@@ -7,17 +7,9 @@ Our very first new module! And... we are finally again adding new functionality.
 """
 
 # ToDo 1: You will need to move and change some imports
-from typing import List
 import time
-
-
 from constants import BANNER, HELP
 from file_utilities import Loading, Printing
-
-
-
-
-
 
 def main() -> None:
     print(BANNER)
