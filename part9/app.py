@@ -9,17 +9,17 @@ Our very first new module! And... we are finally again adding new functionality.
 # ToDo 1: You will need to move and change some imports
 import time
 from constants import BANNER, HELP
-from file_utilities import Loading, Printing
+from file_utilities import Loader, Printer, Configuration
 
 def main() -> None:
     print(BANNER)
     # ToDo 1: Depending on how your imports look, you may need to adapt the call to load_config()
-    config = Loading.load_config()
+    config = Configuration.load()
 
     # Load sonnets (from cache or API)
     start = time.perf_counter()
     # ToDo 1: Depending on how your imports look, you may need to adapt the call to load_sonnets()
-    sonnets = Loading.load_sonnets()
+    sonnets = Loader.load_sonnets()
 
     elapsed = (time.perf_counter() - start) * 1000
     print(f"Loading sonnets took: {elapsed:.3f} [ms]")
@@ -53,7 +53,7 @@ def main() -> None:
                     print("Highlighting", "ON" if config.highlight else "OFF")
                     # ToDo 1: Depending on how your imports look, you may need to adapt the call to save_config()
                     # ToDo 3: You need to adapt the call to save_config
-                    Loading.save_config(config)
+                    config.save()
                 else:
                     print("Usage: :highlight on|off")
                 continue
@@ -64,7 +64,7 @@ def main() -> None:
                     config.search_mode = parts[1].upper()
                     print("Search mode set to", config.search_mode)
                     # ToDo 3: You need to adapt the call to save_config
-                    Loading.save_config(config)
+                    config.save()
                 else:
                     print("Usage: :search-mode AND|OR")
                 continue
@@ -75,9 +75,9 @@ def main() -> None:
                 if len(parts) == 2 and parts[1].upper() in ("DEFAULT", "GREEN"):
                     config.hl_mode = parts[1].upper()
                     print("Highlighting mode set to", config.hl_mode)
-                    Loading.save_config(config)
+                    config.save()
                 else:
-                    print("Usage: :highlight-mode DEFAULT|GREEN")
+                    print("Usage: :hl-mode DEFAULT|GREEN")
                 continue
             print("Unknown command. Type :help for commands.")
             continue
@@ -126,7 +126,7 @@ def main() -> None:
 
         # ToDo 2: You will need to pass the new setting, the highlight_mode to print_results and use it there
 
-        Printing.print_results(raw, combined_results, highlight=config.highlight, hl_mode= config.hl_mode, query_time_ms=elapsed_ms)
+        Printer.print_results(raw, combined_results, highlight=config.highlight, hl_mode= config.hl_mode, query_time_ms=elapsed_ms)
 
 
 if __name__ == "__main__":

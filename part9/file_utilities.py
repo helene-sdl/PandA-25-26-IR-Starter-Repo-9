@@ -4,12 +4,96 @@ import os
 import urllib.request
 import urllib.error
 from constants import POETRYDB_URL, CACHE_FILENAME
-from models import Sonnet, Configuration, SearchResult
-from typing import List
+from models import Sonnet, SearchResult
+from typing import List, Dict, Any
+#move module_relative_path to load/save config and move load/save config to configuration!!
+class Configuration:
+    #added hl mode
+    """
+        A small configuration container for user preferences in the IR system.
+        Stores two settings:
+          - highlight: whether matches should be highlighted using ANSI colors.
+          - search_mode: logical mode for combining multiple search terms ("AND" or "OR").
+    """
+    def __init__(self):
+        # Default settings used at program startup.
+        self.highlight = True
+        self.search_mode = "AND"
+        self.hl_mode = "DEFAULT"
+
+    def copy(self):
+        """
+            Return a *shallow copy* of this configuration object.
+            Useful when you want to pass config around without mutating the original.
+        """
+        copy = Configuration()
+        copy.highlight = self.highlight
+        copy.search_mode = self.search_mode
+        copy.hl_mode = self.hl_mode
+        return copy
+
+    def update(self, other: Dict[str, Any]):
+        """
+            Update this configuration using values from a (loaded) dictionary.
+            Only accepts valid keys and types:
+              - "highlight": must be a boolean
+              - "search_mode": must be "AND" or "OR"
+
+            Invalid entries are silently ignored, ensuring robustness
+            against corrupted or manually edited config files.
+        """
+        if "highlight" in other and isinstance(other["highlight"], bool):
+            self.highlight = other["highlight"]
+
+        if "search_mode" in other and other["search_mode"] in ["AND", "OR"]:
+            self.search_mode = other["search_mode"]
+        #add highlight options
+        if "hl_mode" in other and other["hl_mode"] in ["DEFAULT", "GREEN"]:
+            self.hl_mode = other["hl_mode"]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "highlight": self.highlight,
+            "search_mode": self.search_mode,
+            "hl_mode": self.hl_mode,
+        }
+        # ToDo 1: Moved to file_utilities.py
+
+    @staticmethod
+    def load() -> "Configuration":
+        config_file_path = Paths.module_relative_path("config.json")
+
+        cfg = Loader.DEFAULT_CONFIG.copy()
+        try:
+            with open(config_file_path) as config_file:
+                cfg.update(json.load(config_file))
+        except FileNotFoundError:
+            # File simply doesn't exist yet → quiet, just use defaults
+            print("No config.json found. Using default configuration.")
+            return cfg
+        except json.JSONDecodeError:
+            # File exists but is not valid JSON
+            print("config.json is invalid. Using default configuration.")
+            return cfg
+        except OSError:
+            # Any other OS / IO problem (permissions, disk issues, etc.)
+            print("Could not read config.json. Using default configuration.")
+            return cfg
+
+        return cfg
+
+    # ToDo 1: Moved to file_utilities.py
+    def save(self) -> None:
+        config_file_path = Paths.module_relative_path("config.json")
+
+        try:
+            with open(config_file_path, "w") as config_file:
+                json.dump(self.to_dict(), config_file, indent=4)
+        except OSError:
+            print(f"Writing config.json failed.")
 
 #created class printing in file_utilities
-class Printing:
-
+class Printer:
     @staticmethod
     def print_results(
             query: str,
@@ -29,8 +113,21 @@ class Printing:
         for idx, r in enumerate(matched, start=1):
             # ToDo 0: From here on move the printing code to SearchResult.print(...)
             #         You should then be able to call r.print(idx, highlight)
-            r.print(idx, total_docs, highlight, hl_mode)
-
+            title_line = (
+                # ToDo 2: You will need to pass the new setting, the highlight_mode to ansi_highlight and use it there
+                r.ansi_highlight(r.title, r.title_spans, mode=hl_mode)
+                if highlight
+                else r.title
+            )
+            print(f"\n[{idx}/{total_docs}] {title_line}")
+            for lm in r.line_matches:
+                line_out = (
+                    # ToDo 2: You will need to pass the new setting, the highlight_mode to ansi_highlight and use it there
+                    r.ansi_highlight(lm.text, lm.spans, mode=hl_mode)
+                    if highlight
+                    else lm.text
+                )
+                print(f"  [{lm.line_no:2}] {line_out}")
 
 
 class Paths:
@@ -40,7 +137,7 @@ class Paths:
         return os.path.join(os.path.dirname(__file__), name)
 
 # ToDo 1: Move to file_utilities.py
-class Loading:
+class Loader:
 
     # ToDo 1: Moved to file_utilities.py
     DEFAULT_CONFIG = Configuration()
@@ -77,20 +174,7 @@ class Loading:
         return sonnets
 
     @staticmethod
-    def load_sonnets() -> list[Sonnet]:
-        """
-        Load Shakespeare's sonnets with caching.
-
-        Behaviour:
-          1. If 'sonnets.json' already exists:
-               - Print: "Loaded sonnets from cache."
-               - Return the data.
-          2. Otherwise:
-               - Call fetch_sonnets_from_api() to load the data.
-               - Print: "Downloaded sonnets from PoetryDB."
-               - Save the data (pretty-printed) to CACHE_FILENAME.
-               - Return the data.
-        """
+    def load_sonnets() -> List[Sonnet]:
         sonnets_path = Paths.module_relative_path(CACHE_FILENAME)
 
         if os.path.exists(sonnets_path):
@@ -105,7 +189,7 @@ class Loading:
 
             print("Loaded sonnets from the cache.")
         else:
-            sonnets = Loading.fetch_sonnets_from_api()
+            sonnets = Loader.fetch_sonnets_from_api()
             try:
                 with open(sonnets_path, "w", encoding="utf-8") as f:
                     try:
@@ -117,39 +201,7 @@ class Loading:
 
             print("Downloaded sonnets from PoetryDB.")
 
+        if not all(isinstance(d, dict) for d in sonnets):
+            raise RuntimeError("Sonnets data is invalid after decoding")
+
         return [Sonnet(data) for data in sonnets]
-
-    # ToDo 1: Moved to file_utilities.py
-    @staticmethod
-    def load_config() -> Configuration:
-        config_file_path = Paths.module_relative_path("config.json")
-
-        cfg = Loading.DEFAULT_CONFIG.copy()
-        try:
-            with open(config_file_path) as config_file:
-                cfg.update(json.load(config_file))
-        except FileNotFoundError:
-            # File simply doesn't exist yet → quiet, just use defaults
-            print("No config.json found. Using default configuration.")
-            return cfg
-        except json.JSONDecodeError:
-            # File exists but is not valid JSON
-            print("config.json is invalid. Using default configuration.")
-            return cfg
-        except OSError:
-            # Any other OS / IO problem (permissions, disk issues, etc.)
-            print("Could not read config.json. Using default configuration.")
-            return cfg
-
-        return cfg
-
-    # ToDo 1: Moved to file_utilities.py
-    @staticmethod
-    def save_config(cfg: Configuration) -> None:
-        config_file_path = Paths.module_relative_path("config.json")
-
-        try:
-            with open(config_file_path, "w") as config_file:
-                json.dump(cfg.to_dict(), config_file, indent=4)
-        except OSError:
-            print(f"Writing config.json failed.")

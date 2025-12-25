@@ -1,56 +1,5 @@
 from typing import List, Dict, Any, Tuple
 
-class Configuration:
-    #added hl mode
-    """
-        A small configuration container for user preferences in the IR system.
-        Stores two settings:
-          - highlight: whether matches should be highlighted using ANSI colors.
-          - search_mode: logical mode for combining multiple search terms ("AND" or "OR").
-    """
-    def __init__(self):
-        # Default settings used at program startup.
-        self.highlight = True
-        self.search_mode = "AND"
-        self.hl_mode = "DEFAULT"
-
-    def copy(self):
-        """
-            Return a *shallow copy* of this configuration object.
-            Useful when you want to pass config around without mutating the original.
-        """
-        copy = Configuration()
-        copy.highlight = self.highlight
-        copy.search_mode = self.search_mode
-        copy.hl_mode = self.hl_mode
-        return copy
-
-    def update(self, other: Dict[str, Any]):
-        """
-            Update this configuration using values from a (loaded) dictionary.
-            Only accepts valid keys and types:
-              - "highlight": must be a boolean
-              - "search_mode": must be "AND" or "OR"
-
-            Invalid entries are silently ignored, ensuring robustness
-            against corrupted or manually edited config files.
-        """
-        if "highlight" in other and isinstance(other["highlight"], bool):
-            self.highlight = other["highlight"]
-
-        if "search_mode" in other and other["search_mode"] in ["AND", "OR"]:
-            self.search_mode = other["search_mode"]
-        #add highlight options
-        if "hl_mode" in other and other["hl_mode"] in ["DEFAULT", "GREEN"]:
-            self.hl_mode = other["hl_mode"]
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "highlight": self.highlight,
-            "search_mode": self.search_mode,
-            "hl_mode": self.hl_mode,
-        }
-
 class LineMatch:
     def __init__(self, line_no: int, text: str, spans: List[Tuple[int, int]]):
         self.line_no = line_no
@@ -69,23 +18,6 @@ class SearchResult:
 
     def copy(self):
         return SearchResult(self.title, self.title_spans, self.line_matches, self.matches)
-
-    def print(self, idx: int, total_docs: int, highlight: bool, hl_mode: str = "DEFAULT"):
-        title_line = (
-            # ToDo 2: You will need to pass the new setting, the highlight_mode to ansi_highlight and use it there
-            self.ansi_highlight(self.title, self.title_spans, mode = hl_mode)
-            if highlight
-            else self.title
-        )
-        print(f"\n[{idx}/{total_docs}] {title_line}")
-        for lm in self.line_matches:
-            line_out = (
-                # ToDo 2: You will need to pass the new setting, the highlight_mode to ansi_highlight and use it there
-                self.ansi_highlight(lm.text, lm.spans, mode = hl_mode)
-                if highlight
-                else lm.text
-            )
-            print(f"  [{lm.line_no:2}] {line_out}")
 
     # ToDo 0: Moved to SearchResult
     @staticmethod
